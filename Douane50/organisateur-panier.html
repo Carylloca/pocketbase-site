@@ -79,6 +79,8 @@
         groupId = localStorage.getItem("currentGroup");
     }
 
+    let companionName = "Compagnon";
+
     async function loadPanier() {
         try {
             // Charger le panier + compagnon + groupe
@@ -89,9 +91,11 @@
             const comp = panier.expand?.companion;
             const group = panier.expand?.group;
 
+            companionName = comp?.name || "Compagnon inconnu";
+
             // ⭐ Titre
             document.getElementById("title").innerText =
-                "Panier de : " + (comp?.name || "Compagnon inconnu");
+                "Panier de : " + companionName;
 
             // ⭐ Bouton retour vers la liste des paniers
             if (group) {
@@ -168,14 +172,14 @@
     }
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF
+       📄 EXPORT PDF — AVEC NOM DU COMPAGNON
     --------------------------------------------------- */
     async function exportPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text("Panier du compagnon", 10, 15);
+        doc.text(`Panier du compagnon : ${companionName}`, 10, 15);
 
         let y = 30;
 
@@ -195,11 +199,11 @@
             y += 8;
         });
 
-        doc.save("panier.pdf");
+        doc.save("liste-paniers-detailles.pdf");
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL
+       📊 EXPORT EXCEL — AVEC NOM DU COMPAGNON
     --------------------------------------------------- */
     async function exportExcel() {
         const lines = await pb.collection("lines").getFullList({
@@ -208,6 +212,7 @@
         });
 
         const data = lines.map(l => ({
+            Compagnon: companionName,
             Cave: l.product,
             Volume: l.volume,
             Quantité: l.quantity,
@@ -219,7 +224,7 @@
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "Panier");
 
-        XLSX.writeFile(workbook, "panier.xlsx");
+        XLSX.writeFile(workbook, "liste-paniers-detailles.xlsx");
     }
 
     loadPanier();
