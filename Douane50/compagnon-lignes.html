@@ -55,7 +55,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // Vérifie que le compagnon est connecté
     const companion = pb.authStore.model;
@@ -67,7 +69,7 @@
     // Récupère les paramètres URL
     const urlParams = new URLSearchParams(window.location.search);
     const panierId = urlParams.get("panier");
-    const editId = urlParams.get("edit");   // 🔥 IMPORTANT : ID de la ligne à modifier
+    const editId = urlParams.get("edit");   // 🔥 ID de la ligne à modifier
     const cavePreRemplie = urlParams.get("cave");
 
     if (!panierId) {
