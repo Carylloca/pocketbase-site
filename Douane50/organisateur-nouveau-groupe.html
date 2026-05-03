@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Nouveau Groupe</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2>Créer un groupe</h2>
+
+    <label>Nom du groupe</label>
+    <input type="text" id="name">
+
+    <label>Date de début</label>
+    <input type="date" id="date_debut">
+
+    <label>Date de fin</label>
+    <input type="date" id="date_fin">
+
+    <label>Code d'accès généré</label>
+    <input type="text" id="code" readonly>
+
+    <a id="btnCreate" class="btn">Créer le groupe</a>
+
+    <div class="buttons">
+        <a href="organisateur-groupes.html" class="btn">Retour au menu</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // Vérifie que l'organisateur est connecté
+    const organizer = pb.authStore.model;
+    if (!organizer) {
+        alert("Vous devez être connecté.");
+        window.location.href = "organisateur-login.html";
+    }
+
+    // Génère un code aléatoire
+    function generateCode() {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    // Remplit automatiquement le code
+    document.getElementById("code").value = generateCode();
+
+    // Création du groupe
+    document.getElementById("btnCreate").onclick = async () => {
+        const name = document.getElementById("name").value.trim();
+        const date_debut = document.getElementById("date_debut").value;
+        const date_fin = document.getElementById("date_fin").value;
+        const code = document.getElementById("code").value;
+
+        if (!name) {
+            alert("Veuillez entrer un nom de groupe.");
+            return;
+        }
+
+        try {
+            await pb.collection("groups").create({
+                name,
+                date_debut,
+                date_fin,
+                code,
+                organizers: organizer.id   // association automatique
+            });
+
+            alert("Groupe créé avec succès !");
+            window.location.href = "organisateur-groupes.html";
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la création du groupe.");
+        }
+    };
+</script>
+
+</body>
+</html>

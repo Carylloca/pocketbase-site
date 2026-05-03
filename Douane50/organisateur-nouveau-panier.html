@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Nouveau Panier</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2>Créer un panier</h2>
+
+    <label>Compagnon</label>
+    <select id="companionSelect"></select>
+
+    <a id="btnCreate" class="btn">Créer le panier</a>
+
+    <div class="buttons">
+        <a id="btnRetourPaniers" class="btn">Retour aux paniers</a>
+        <a href="organisateur-groupes.html" class="btn">Retour au menu</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // Récupère l'ID du groupe dans l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const groupId = urlParams.get("group");
+
+    if (!groupId) {
+        alert("Aucun groupe fourni.");
+        window.location.href = "organisateur-groupes.html";
+    }
+
+    // Configure le bouton retour
+    document.getElementById("btnRetourPaniers").href =
+        "organisateur-panier.html?id=" + groupId;
+
+    // Charge les compagnons du groupe
+    async function loadCompanions() {
+        try {
+            const companions = await pb.collection("companions").getFullList({
+                filter: `group = "${groupId}"`,
+                sort: "name"
+            });
+
+            const select = document.getElementById("companionSelect");
+            select.innerHTML = "";
+
+            companions.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+
+            if (companions.length === 0) {
+                select.innerHTML = `<option>Aucun compagnon dans ce groupe</option>`;
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors du chargement des compagnons.");
+        }
+    }
+
+    // Création du panier
+    document.getElementById("btnCreate").onclick = async () => {
+        const companionId = document.getElementById("companionSelect").value;
+
+        if (!companionId) {
+            alert("Veuillez sélectionner un compagnon.");
+            return;
+        }
+
+        try {
+            await pb.collection("baskets").create({
+                group: groupId,
+                companion: companionId
+            });
+
+            alert("Panier créé !");
+            window.location.href = "organisateur-panier.html?id=" + groupId;
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la création du panier.");
+        }
+    };
+
+    loadCompanions();
+</script>
+
+</body>
+</html>

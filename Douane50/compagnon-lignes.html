@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajouter / Modifier une ligne</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2 id="formTitle">Ajouter une ligne</h2>
+
+    <p class="info">
+        ⚠️ <strong>Important :</strong><br>
+        Si le <strong>prix total</strong> d’une cave est indiqué sur une seule ligne,<br>
+        alors indiquez <strong>0</strong> dans le champ “Prix (euros)” des autres lignes<br>
+        appartenant à la même cave.
+    </p>
+
+    <label for="product">Cave</label>
+    <input type="text" id="product" placeholder="Nom de la cave">
+
+    <label for="quantity">Quantité</label>
+    <input type="number" id="quantity" min="1" value="1">
+
+    <label for="volume">Volume</label>
+    <select id="volume">
+        <option value="37.5cl">37.5 cl</option>
+        <option value="50cl">50 cl</option>
+        <option value="75cl" selected>75 cl</option>
+        <option value="100cl">100 cl</option>
+        <option value="150cl">150 cl</option>
+    </select>
+
+    <label for="price">Prix (euros)</label>
+    <input type="number" id="price" min="0" step="0.05" value="0">
+
+    <div class="buttons">
+        <button class="btn" onclick="saveLine(false)" id="btnAddMore">Ajouter une autre ligne</button>
+        <button class="btn" onclick="saveLine(true)" id="btnFinish">Terminer et revenir au panier</button>
+        <a id="btnBack" class="btn">Retour au panier</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // Vérifie que le compagnon est connecté
+    const companion = pb.authStore.model;
+    if (!companion) {
+        alert("Vous devez être connecté.");
+        window.location.href = "compagnon-login.html";
+    }
+
+    // Récupère les paramètres URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const panierId = urlParams.get("panier");
+    const editId = urlParams.get("edit");   // 🔥 IMPORTANT : ID de la ligne à modifier
+    const cavePreRemplie = urlParams.get("cave");
+
+    if (!panierId) {
+        alert("Panier introuvable.");
+        window.location.href = "compagnon-menu.html";
+    }
+
+    // Bouton retour
+    document.getElementById("btnBack").href = "compagnon-panier.html";
+
+    // Si on ajoute plusieurs lignes pour la même cave
+    if (cavePreRemplie && !editId) {
+        document.getElementById("product").value = cavePreRemplie;
+    }
+
+    // 🔥 MODE MODIFIER : charger la ligne existante
+    if (editId) {
+        loadLineToEdit();
+    }
+
+    async function loadLineToEdit() {
+        try {
+            const line = await pb.collection("lines").getOne(editId);
+
+            document.getElementById("product").value = line.product;
+            document.getElementById("quantity").value = line.quantity;
+            document.getElementById("volume").value = line.volume;
+            document.getElementById("price").value = line.price;
+
+            // Changer le titre
+            document.getElementById("formTitle").innerText = "Modifier une ligne";
+
+            // Adapter les boutons
+            document.getElementById("btnAddMore").style.display = "none";
+            document.getElementById("btnFinish").innerText = "Enregistrer les modifications";
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors du chargement de la ligne.");
+        }
+    }
+
+    async function saveLine(terminer) {
+        const product = document.getElementById("product").value.trim();
+        const quantity = parseInt(document.getElementById("quantity").value);
+        const volume = document.getElementById("volume").value;
+        const price = parseFloat(document.getElementById("price").value);
+
+        if (!product || quantity <= 0 || price < 0) {
+            alert("Veuillez remplir correctement tous les champs.");
+            return;
+        }
+
+        try {
+            if (editId) {
+                // 🔥 MODE MODIFIER
+                await pb.collection("lines").update(editId, {
+                    product,
+                    quantity,
+                    volume,
+                    price
+                });
+
+                window.location.href = "compagnon-panier.html";
+                return;
+            }
+
+            // MODE AJOUT
+            await pb.collection("lines").create({
+                basket: panierId,
+                product,
+                quantity,
+                volume,
+                price
+            });
+
+            if (terminer) {
+                window.location.href = "compagnon-panier.html";
+            } else {
+                window.location.href =
+                    "compagnon-lignes.html?panier=" + panierId +
+                    "&cave=" + encodeURIComponent(product);
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de l'enregistrement.");
+        }
+    }
+</script>
+
+</body>
+</html>

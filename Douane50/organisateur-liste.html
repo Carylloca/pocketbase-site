@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Paniers du groupe</title>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background: #eee;
+            font-weight: bold;
+        }
+        tfoot td {
+            font-weight: bold;
+            background: #f5f0eb;
+            border-top: 2px solid #6a0f25;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2 id="groupName">Chargement...</h2>
+
+    <div id="basketsList"></div>
+
+    <div class="buttons">
+        <a href="organisateur-groupes.html" class="btn">Retour</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // ⭐ Récupération du groupId
+    const params = new URLSearchParams(window.location.search);
+    let groupId = params.get("group");
+
+    if (!groupId) {
+        groupId = localStorage.getItem("currentGroup");
+    }
+
+    if (!groupId) {
+        alert("Groupe introuvable.");
+        window.location.href = "organisateur-groupes.html";
+    }
+
+    // ⭐ Sauvegarde pour les autres pages
+    localStorage.setItem("currentGroup", groupId);
+
+    async function loadBaskets() {
+        try {
+            // Charger le groupe
+            const group = await pb.collection("groups").getOne(groupId);
+            document.getElementById("groupName").innerText =
+                "Paniers du groupe : " + group.name;
+
+            // Charger les paniers
+            const baskets = await pb.collection("baskets").getFullList({
+                filter: `group = "${groupId}"`,
+                expand: "companion"
+            });
+
+            const list = document.getElementById("basketsList");
+
+            if (baskets.length === 0) {
+                list.innerHTML = "<p>Aucun panier pour ce groupe.</p>";
+                return;
+            }
+
+            // ⭐ TRI ALPHABÉTIQUE DES COMPAGNONS
+            baskets.sort((a, b) => {
+                const nameA = (a.expand?.companion?.name || "").toLowerCase();
+                const nameB = (b.expand?.companion?.name || "").toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            // ⭐ Construction du tableau
+            list.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Compagnon</th>
+                            <th>Total litres</th>
+                            <th>Total prix</th>
+                            <th>Voir le panier</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                    <tfoot id="tfoot"></tfoot>
+                </table>
+            `;
+
+            const tbody = document.getElementById("tbody");
+            const tfoot = document.getElementById("tfoot");
+
+            let totalLitresGlobal = 0;
+            let totalPrixGlobal = 0;
+
+            // ⭐ Pour chaque panier → charger les lignes
+            for (const b of baskets) {
+
+                const comp = b.expand?.companion;
+                const name = comp ? comp.name : "Inconnu";
+
+                const lines = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
+
+                let totalPrix = 0;
+                let totalCl = 0;
+
+                lines.forEach(line => {
+                    const price = line.price || 0;
+                    totalPrix += price;
+
+                    const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+                    totalCl += volCl * line.quantity;
+                });
+
+                const totalLitres = (totalCl / 100).toFixed(2);
+                const totalPrixFix = totalPrix.toFixed(2);
+
+                // Totaux globaux
+                totalLitresGlobal += Number(totalLitres);
+                totalPrixGlobal += Number(totalPrixFix);
+
+                // ⭐ Ligne du compagnon
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${name}</td>
+                        <td>${totalLitres} L</td>
+                        <td>${totalPrixFix} €</td>
+                        <td>
+                            <a class="btn" href="organisateur-panier.html?panier=${b.id}">
+                                Voir le panier
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            // ⭐ Ligne finale des totaux globaux
+            tfoot.innerHTML = `
+                <tr>
+                    <td>Total général</td>
+                    <td>${totalLitresGlobal.toFixed(2)} L</td>
+                    <td>${totalPrixGlobal.toFixed(2)} €</td>
+                    <td></td>
+                </tr>
+            `;
+
+        } catch (err) {
+            console.error("ERREUR loadBaskets :", err);
+            alert("Erreur lors du chargement des paniers (voir console).");
+        }
+    }
+
+    loadBaskets();
+</script>
+
+</body>
+</html>

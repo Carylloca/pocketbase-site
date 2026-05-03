@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion Compagnon</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2>Connexion Compagnon</h2>
+
+    <div id="error" class="error"></div>
+
+    <label>Email</label>
+    <input type="email" id="email">
+
+    <label>Mot de passe</label>
+    <input type="password" id="password">
+
+    <label>Code d'accès du groupe</label>
+    <input type="text" id="accessCode">
+
+    <a id="btnLogin" class="btn">Se connecter</a>
+
+    <div class="buttons">
+        <a href="index.html" class="btn">Retour</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    document.getElementById("btnLogin").onclick = async () => {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const accessCode = document.getElementById("accessCode").value.trim();
+        const errorBox = document.getElementById("error");
+
+        errorBox.innerText = "";
+
+        if (!email || !password || !accessCode) {
+            errorBox.innerText = "Veuillez remplir tous les champs.";
+            return;
+        }
+
+        try {
+            // 1) Connexion du compagnon
+            await pb.collection("companions").authWithPassword(email, password);
+            const companion = pb.authStore.model;
+
+            // 2) Vérification du groupe via le code d'accès
+            const groups = await pb.collection("groups").getFullList({
+                filter: `accessCode_ = "${accessCode}"`
+            });
+
+            if (groups.length === 0) {
+                pb.authStore.clear();
+                errorBox.innerText = "Code d'accès invalide.";
+                return;
+            }
+
+            const group = groups[0];
+
+            // 3) Vérifier que le compagnon appartient à ce groupe
+            if (companion.group !== group.id) {
+                pb.authStore.clear();
+                errorBox.innerText = "Vous n'appartenez pas à ce groupe.";
+                return;
+            }
+
+            // 4) Stocker les infos pour la page panier
+            localStorage.setItem("groupId", group.id);
+            localStorage.setItem("companionId", companion.id);
+            localStorage.setItem("companionName", companion.name);
+
+            // 5) Connexion réussie → redirection
+            window.location.href = "compagnon-panier.html";
+
+        } catch (err) {
+            console.error(err);
+            errorBox.innerText = "Email ou mot de passe incorrect.";
+        }
+    };
+</script>
+
+</body>
+</html>

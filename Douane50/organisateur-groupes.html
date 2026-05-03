@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Groupes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2>Liste des groupes</h2>
+
+    <div id="groupsList"></div>
+
+    <div class="buttons">
+        <a href="index.html" class="btn">Retour au menu principal</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    async function loadGroups() {
+        try {
+            // Charger tous les groupes
+            const groups = await pb.collection("groups").getFullList({
+                sort: "name"
+            });
+
+            console.log("DEBUG groups =", groups);
+
+            const list = document.getElementById("groupsList");
+
+            if (groups.length === 0) {
+                list.innerHTML = "<p>Aucun groupe trouvé.</p>";
+                return;
+            }
+
+            // Construction du tableau
+            list.innerHTML = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nom du groupe</th>
+                            <th>Voir les paniers</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyGroups"></tbody>
+                </table>
+            `;
+
+            const tbody = document.getElementById("tbodyGroups");
+
+            groups.forEach(g => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${g.name}</td>
+                        <td>
+                            <a class="btn" href="organisateur-liste.html?group=${g.id}">
+                                Ouvrir
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+
+        } catch (err) {
+            console.error("ERREUR loadGroups :", err);
+            alert("Erreur lors du chargement des groupes (voir console).");
+        }
+    }
+
+    loadGroups();
+</script>
+
+</body>
+</html>

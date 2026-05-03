@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Détail du panier</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        .line-header, .line-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            align-items: center;
+        }
+        .line-header {
+            font-weight: bold;
+            background: #eee;
+            border-bottom: 2px solid #999;
+        }
+        .line-row {
+            border-bottom: 1px solid #ccc;
+        }
+        .total-row {
+            font-weight: bold;
+            background: #f5f0eb;
+            border-top: 2px solid #6a0f25;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2 id="title">Chargement...</h2>
+
+    <div id="linesList"></div>
+
+    <div class="buttons">
+        <a id="btnRetourListe" class="btn">Retour à la liste des paniers</a>
+        <a href="organisateur-groupes.html" class="btn">Retour au menu</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // ⭐ On récupère le panier depuis l’URL
+    const params = new URLSearchParams(window.location.search);
+    const panierId = params.get("panier");
+
+    if (!panierId) {
+        alert("Panier introuvable.");
+        window.location.href = "organisateur-groupes.html";
+    }
+
+    // ⭐ On récupère le groupId depuis l’URL OU le localStorage
+    let groupId = params.get("group");
+    if (!groupId) {
+        groupId = localStorage.getItem("currentGroup");
+    }
+
+    async function loadPanier() {
+        try {
+            // Charger le panier + compagnon + groupe
+            const panier = await pb.collection("baskets").getOne(panierId, {
+                expand: "companion,group"
+            });
+
+            const comp = panier.expand?.companion;
+            const group = panier.expand?.group;
+
+            // ⭐ Titre
+            document.getElementById("title").innerText =
+                "Panier de : " + (comp?.name || "Compagnon inconnu");
+
+            // ⭐ Bouton retour vers la liste des paniers
+            if (group) {
+                localStorage.setItem("currentGroup", group.id);
+                document.getElementById("btnRetourListe").href =
+                    "organisateur-liste.html";
+            } else {
+                document.getElementById("btnRetourListe").href =
+                    "organisateur-liste.html";
+            }
+
+            // ⭐ Charger les lignes depuis la collection "lines"
+            loadLines();
+
+        } catch (err) {
+            console.error("ERREUR getOne baskets :", err);
+            alert("Panier introuvable (voir console).");
+        }
+    }
+
+    async function loadLines() {
+        const list = document.getElementById("linesList");
+        list.innerHTML = "";
+
+        // ⭐ Charger les lignes du panier
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product,created"
+        });
+
+        if (lines.length === 0) {
+            list.innerHTML = "<p>Aucune ligne dans ce panier.</p>";
+            return;
+        }
+
+        list.innerHTML = `
+            <div class="line-header">
+                <div>Cave</div>
+                <div>Volume</div>
+                <div>Quantité</div>
+                <div>Prix (euros)</div>
+            </div>
+        `;
+
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        lines.forEach(line => {
+            const price = line.price || 0;
+            totalPrix += price;
+
+            const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+            totalCl += volCl * line.quantity;
+
+            list.innerHTML += `
+                <div class="line-row">
+                    <div>${line.product}</div>
+                    <div>${line.volume}</div>
+                    <div>${line.quantity}</div>
+                    <div>${price.toFixed(2)} €</div>
+                </div>
+            `;
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+
+        list.innerHTML += `
+            <div class="line-row total-row">
+                <div>Total</div>
+                <div>${totalLitres} litres</div>
+                <div></div>
+                <div>${totalPrix.toFixed(2)} €</div>
+            </div>
+        `;
+    }
+
+    loadPanier();
+</script>
+
+</body>
+</html>

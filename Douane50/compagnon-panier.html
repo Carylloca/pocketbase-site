@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Panier du compagnon</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        .line-header, .line-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            align-items: center;
+        }
+        .line-header {
+            font-weight: bold;
+            background: #eee;
+            border-bottom: 2px solid #999;
+        }
+        .line-row {
+            border-bottom: 1px solid #ccc;
+        }
+
+        .edit-btn {
+            background: #6a0f25;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .edit-btn:hover {
+            background: #8c1433;
+        }
+
+        .delete-btn {
+            background: #7a0010;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .delete-btn:hover {
+            background: #a30018;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background: #f5f0eb;
+            border-top: 2px solid #6a0f25;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2 id="title">Chargement...</h2>
+
+    <div id="linesList"></div>
+
+    <div class="buttons">
+        <a id="btnAddLine" class="btn">Ajouter une ligne</a>
+        <a href="index.html" class="btn">Retour</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // Vérifier que le compagnon est connecté
+    const companion = pb.authStore.model;
+    if (!companion) {
+        alert("Vous devez être connecté.");
+        window.location.href = "compagnon-login.html";
+    }
+
+    let panierId = null;
+
+    async function loadOrCreatePanier() {
+
+        // ⭐ Récupération du groupId depuis le localStorage (et non l’URL)
+        const groupId = localStorage.getItem("groupId");
+
+        if (!groupId) {
+            alert("Groupe introuvable.");
+            window.location.href = "compagnon-login.html";
+            return;
+        }
+
+        // Chercher un panier existant pour ce compagnon et ce groupe
+        const paniers = await pb.collection("baskets").getFullList({
+            filter: `companion = "${companion.id}" && group = "${groupId}"`,
+            sort: "-created"
+        });
+
+        // Créer un panier si aucun n'existe
+        panierId = paniers.length > 0 ? paniers[0].id :
+            (await pb.collection("baskets").create({
+                companion: companion.id,
+                group: groupId,
+                items: []
+            })).id;
+
+        document.getElementById("title").innerText =
+            "Panier du Compagnon " + (companion.name || "");
+
+        document.getElementById("btnAddLine").href =
+            "compagnon-lignes.html?panier=" + panierId;
+
+        loadLines();
+    }
+
+    async function deleteLine(id) {
+        if (!confirm("Supprimer cette ligne ?")) return;
+        await pb.collection("lines").delete(id);
+        loadLines();
+    }
+
+    function editLine(id) {
+        window.location.href =
+            "compagnon-lignes.html?panier=" + panierId + "&edit=" + id;
+    }
+
+    async function loadLines() {
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product,created"
+        });
+
+        const list = document.getElementById("linesList");
+        list.innerHTML = "";
+
+        if (lines.length === 0) {
+            list.innerHTML = "<p>Aucune ligne dans ce panier.</p>";
+            return;
+        }
+
+        list.innerHTML = `
+            <div class="line-header">
+                <div>Cave</div>
+                <div>Volume</div>
+                <div>Quantité</div>
+                <div>Prix (euros)</div>
+                <div>Modifier</div>
+                <div>Supprimer</div>
+            </div>
+        `;
+
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        lines.forEach(line => {
+            const price = line.price || 0;
+            totalPrix += price;
+
+            const volCl = parseFloat(line.volume.replace("cl", ""));
+            totalCl += volCl * line.quantity;
+
+            list.innerHTML += `
+                <div class="line-row">
+                    <div>${line.product}</div>
+                    <div>${line.volume}</div>
+                    <div>${line.quantity}</div>
+                    <div>${price.toFixed(2)} €</div>
+                    <div class="edit-btn" onclick="editLine('${line.id}')">Modifier</div>
+                    <div class="delete-btn" onclick="deleteLine('${line.id}')">Supprimer</div>
+                </div>
+            `;
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+
+        list.innerHTML += `
+            <div class="line-row total-row">
+                <div>Total</div>
+                <div>${totalLitres} litres</div>
+                <div></div>
+                <div>${totalPrix.toFixed(2)} €</div>
+                <div></div>
+                <div></div>
+            </div>
+        `;
+    }
+
+    loadOrCreatePanier();
+</script>
+
+</body>
+</html>

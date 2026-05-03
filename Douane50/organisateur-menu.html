@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Menu Organisateur</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h1>Douane 50ème</h1>
+</header>
+
+<div class="container">
+    <h2 id="welcome">Chargement...</h2>
+
+    <div class="buttons">
+        <a href="organisateur-groupes.html" class="btn">Mes groupes</a>
+        <a id="logoutBtn" class="btn">Se déconnecter</a>
+    </div>
+</div>
+
+<footer>
+    <p>© Douane 50ème — Encaveurs & Tradition</p>
+</footer>
+
+<script>
+    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    // Vérifie que l'organisateur est connecté
+    const organizer = pb.authStore.model;
+    if (!organizer) {
+        alert("Vous devez être connecté.");
+        window.location.href = "organisateur-login.html";
+    }
+
+    // Affiche le nom de l'organisateur
+    document.getElementById("welcome").innerText =
+        "Bienvenue " + (organizer.name || "Organisateur");
+
+    // Déconnexion
+    document.getElementById("logoutBtn").onclick = () => {
+        pb.authStore.clear();
+        window.location.href = "organisateur-login.html";
+    };
+</script>
+
+</body>
+</html>
