@@ -5,6 +5,10 @@
     <title>Paniers du groupe</title>
     <link rel="stylesheet" href="style.css">
 
+    <!-- Librairies Export PDF & Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
         table {
             width: 100%;
@@ -36,6 +40,11 @@
 
 <div class="container">
     <h2 id="groupName">Chargement...</h2>
+
+    <div class="buttons">
+        <a class="btn" onclick="exportGroupPDF()">Export PDF</a>
+        <a class="btn" onclick="exportGroupExcel()">Export Excel</a>
+    </div>
 
     <div id="basketsList"></div>
 
@@ -179,6 +188,89 @@
     }
 
     loadBaskets();
+
+    /* ---------------------------------------------------
+       📄 EXPORT PDF DU GROUPE
+    --------------------------------------------------- */
+    async function exportGroupPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text("Paniers du groupe", 10, 15);
+
+        let y = 30;
+
+        const baskets = await pb.collection("baskets").getFullList({
+            filter: `group = "${groupId}"`,
+            expand: "companion"
+        });
+
+        for (const b of baskets) {
+            const name = b.expand?.companion?.name || "Inconnu";
+
+            doc.setFontSize(14);
+            doc.text(name, 10, y);
+            y += 8;
+
+            const lines = await pb.collection("lines").getFullList({
+                filter: `basket = "${b.id}"`
+            });
+
+            doc.setFontSize(11);
+
+            lines.forEach(line => {
+                doc.text(
+                    `  ${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
+                    10,
+                    y
+                );
+                y += 7;
+            });
+
+            y += 5;
+        }
+
+        doc.save("groupe.pdf");
+    }
+
+    /* ---------------------------------------------------
+       📊 EXPORT EXCEL DU GROUPE
+    --------------------------------------------------- */
+    async function exportGroupExcel() {
+        const baskets = await pb.collection("baskets").getFullList({
+            filter: `group = "${groupId}"`,
+            expand: "companion"
+        });
+
+        let rows = [];
+
+        for (const b of baskets) {
+            const name = b.expand?.companion?.name || "Inconnu";
+
+            const lines = await pb.collection("lines").getFullList({
+                filter: `basket = "${b.id}"`
+            });
+
+            lines.forEach(line => {
+                rows.push({
+                    Compagnon: name,
+                    Cave: line.product,
+                    Volume: line.volume,
+                    Quantité: line.quantity,
+                    Prix: line.price
+                });
+            });
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Groupe");
+
+        XLSX.writeFile(workbook, "groupe.xlsx");
+    }
+
 </script>
 
 </body>
