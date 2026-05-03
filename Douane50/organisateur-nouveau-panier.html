@@ -34,7 +34,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // Récupère l'ID du groupe dans l'URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -45,9 +47,9 @@
         window.location.href = "organisateur-groupes.html";
     }
 
-    // Configure le bouton retour
+    // Configure le bouton retour (correction)
     document.getElementById("btnRetourPaniers").href =
-        "organisateur-panier.html?id=" + groupId;
+        "organisateur-liste.html?group=" + groupId;
 
     // Charge les compagnons du groupe
     async function loadCompanions() {
@@ -90,7 +92,7 @@
             });
 
             alert("Panier créé !");
-            window.location.href = "organisateur-panier.html?id=" + groupId;
+            window.location.href = "organisateur-liste.html?group=" + groupId;
 
         } catch (err) {
             console.error(err);
