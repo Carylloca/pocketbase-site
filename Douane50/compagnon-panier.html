@@ -80,7 +80,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // Vérifier que le compagnon est connecté
     const companion = pb.authStore.model;
@@ -93,7 +95,7 @@
 
     async function loadOrCreatePanier() {
 
-        // ⭐ Récupération du groupId depuis le localStorage (et non l’URL)
+        // ⭐ Récupération du groupId depuis le localStorage
         const groupId = localStorage.getItem("groupId");
 
         if (!groupId) {
