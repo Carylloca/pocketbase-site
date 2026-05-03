@@ -209,14 +209,16 @@
     }
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF
+       📄 EXPORT PDF — AVEC NOM DU COMPAGNON
     --------------------------------------------------- */
     async function exportPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
+        const compName = companion.name || "Compagnon";
+
         doc.setFontSize(18);
-        doc.text("Panier du compagnon", 10, 15);
+        doc.text(`Panier du compagnon : ${compName}`, 10, 15);
 
         let y = 30;
 
@@ -236,19 +238,22 @@
             y += 8;
         });
 
-        doc.save("panier.pdf");
+        doc.save(`panier-${compName}.pdf`);
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL
+       📊 EXPORT EXCEL — AVEC NOM DU COMPAGNON
     --------------------------------------------------- */
     async function exportExcel() {
+        const compName = companion.name || "Compagnon";
+
         const lines = await pb.collection("lines").getFullList({
             filter: `basket = "${panierId}"`,
             sort: "product"
         });
 
         const data = lines.map(l => ({
+            Compagnon: compName,
             Cave: l.product,
             Volume: l.volume,
             Quantité: l.quantity,
@@ -260,7 +265,7 @@
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "Panier");
 
-        XLSX.writeFile(workbook, "panier.xlsx");
+        XLSX.writeFile(workbook, `panier-${compName}.xlsx`);
     }
 
     loadOrCreatePanier();
