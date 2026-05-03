@@ -190,14 +190,14 @@
     loadBaskets();
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF DU GROUPE
+       📄 EXPORT PDF DU GROUPE — AVEC TOTAL PAR COMPAGNON
     --------------------------------------------------- */
     async function exportGroupPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text("Paniers du groupe", 10, 15);
+        doc.text("Liste paniers détaillés — Groupe", 10, 15);
 
         let y = 30;
 
@@ -219,7 +219,11 @@
 
             doc.setFontSize(11);
 
+            let totalPrix = 0;
+
             lines.forEach(line => {
+                totalPrix += line.price || 0;
+
                 doc.text(
                     `  ${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
                     10,
@@ -228,14 +232,15 @@
                 y += 7;
             });
 
-            y += 5;
+            doc.text(`  Total compagnon : ${totalPrix.toFixed(2)} €`, 10, y);
+            y += 10;
         }
 
-        doc.save("groupe.pdf");
+        doc.save("liste-paniers-detailles.pdf");
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL DU GROUPE
+       📊 EXPORT EXCEL DU GROUPE — AVEC TOTAL PAR COMPAGNON
     --------------------------------------------------- */
     async function exportGroupExcel() {
         const baskets = await pb.collection("baskets").getFullList({
@@ -252,7 +257,11 @@
                 filter: `basket = "${b.id}"`
             });
 
+            let totalPrix = 0;
+
             lines.forEach(line => {
+                totalPrix += line.price || 0;
+
                 rows.push({
                     Compagnon: name,
                     Cave: line.product,
@@ -261,6 +270,14 @@
                     Prix: line.price
                 });
             });
+
+            rows.push({
+                Compagnon: name,
+                Cave: "TOTAL",
+                Volume: "",
+                Quantité: "",
+                Prix: totalPrix.toFixed(2)
+            });
         }
 
         const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -268,7 +285,7 @@
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "Groupe");
 
-        XLSX.writeFile(workbook, "groupe.xlsx");
+        XLSX.writeFile(workbook, "liste-paniers-detailles.xlsx");
     }
 
 </script>
