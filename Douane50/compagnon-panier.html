@@ -7,6 +7,10 @@
 
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
 
+    <!-- Librairies Export PDF & Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
         .line-header, .line-row {
             display: grid;
@@ -71,6 +75,11 @@
 
     <div class="buttons">
         <a id="btnAddLine" class="btn">Ajouter une ligne</a>
+
+        <!-- Boutons Export -->
+        <a class="btn" onclick="exportPDF()">Export PDF</a>
+        <a class="btn" onclick="exportExcel()">Export Excel</a>
+
         <a href="index.html" class="btn">Retour</a>
     </div>
 </div>
@@ -197,6 +206,61 @@
                 <div></div>
             </div>
         `;
+    }
+
+    /* ---------------------------------------------------
+       📄 EXPORT PDF
+    --------------------------------------------------- */
+    async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text("Panier du compagnon", 10, 15);
+
+        let y = 30;
+
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product"
+        });
+
+        doc.setFontSize(12);
+
+        lines.forEach(line => {
+            doc.text(
+                `${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
+                10,
+                y
+            );
+            y += 8;
+        });
+
+        doc.save("panier.pdf");
+    }
+
+    /* ---------------------------------------------------
+       📊 EXPORT EXCEL
+    --------------------------------------------------- */
+    async function exportExcel() {
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product"
+        });
+
+        const data = lines.map(l => ({
+            Cave: l.product,
+            Volume: l.volume,
+            Quantité: l.quantity,
+            Prix: l.price
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Panier");
+
+        XLSX.writeFile(workbook, "panier.xlsx");
     }
 
     loadOrCreatePanier();
