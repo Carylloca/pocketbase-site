@@ -53,7 +53,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // ⭐ On récupère le panier depuis l’URL
     const params = new URLSearchParams(window.location.search);
@@ -88,7 +90,7 @@
             if (group) {
                 localStorage.setItem("currentGroup", group.id);
                 document.getElementById("btnRetourListe").href =
-                    "organisateur-liste.html";
+                    "organisateur-liste.html?group=" + group.id;
             } else {
                 document.getElementById("btnRetourListe").href =
                     "organisateur-liste.html";
