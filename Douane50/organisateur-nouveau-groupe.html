@@ -42,7 +42,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // Vérifie que l'organisateur est connecté
     const organizer = pb.authStore.model;
@@ -76,7 +78,7 @@
                 name,
                 date_debut,
                 date_fin,
-                code,
+                accessCode_: code,
                 organizers: organizer.id   // association automatique
             });
 
