@@ -38,7 +38,9 @@
 </footer>
 
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     document.getElementById("btnLogin").onclick = async () => {
         const email = document.getElementById("email").value.trim();
