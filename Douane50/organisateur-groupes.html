@@ -28,7 +28,9 @@
 
 <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
 <script>
-    const pb = new PocketBase("http://127.0.0.1:8090");
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     async function loadGroups() {
         try {
@@ -36,8 +38,6 @@
             const groups = await pb.collection("groups").getFullList({
                 sort: "name"
             });
-
-            console.log("DEBUG groups =", groups);
 
             const list = document.getElementById("groupsList");
 
