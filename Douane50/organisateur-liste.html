@@ -60,33 +60,25 @@
 <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
 <script>
 
-    /* 🔥 URL BACKEND POCKETBASE RENDER */
     const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
-    // ⭐ Récupération du groupId
     const params = new URLSearchParams(window.location.search);
     let groupId = params.get("group");
 
-    if (!groupId) {
-        groupId = localStorage.getItem("currentGroup");
-    }
-
+    if (!groupId) groupId = localStorage.getItem("currentGroup");
     if (!groupId) {
         alert("Groupe introuvable.");
         window.location.href = "organisateur-groupes.html";
     }
 
-    // ⭐ Sauvegarde pour les autres pages
     localStorage.setItem("currentGroup", groupId);
 
     async function loadBaskets() {
         try {
-            // Charger le groupe
             const group = await pb.collection("groups").getOne(groupId);
             document.getElementById("groupName").innerText =
                 "Paniers du groupe : " + group.name;
 
-            // Charger les paniers
             const baskets = await pb.collection("baskets").getFullList({
                 filter: `group = "${groupId}"`,
                 expand: "companion"
@@ -99,14 +91,12 @@
                 return;
             }
 
-            // ⭐ TRI ALPHABÉTIQUE DES COMPAGNONS
             baskets.sort((a, b) => {
                 const nameA = (a.expand?.companion?.name || "").toLowerCase();
                 const nameB = (b.expand?.companion?.name || "").toLowerCase();
                 return nameA.localeCompare(nameB);
             });
 
-            // ⭐ Construction du tableau
             list.innerHTML = `
                 <table>
                     <thead>
@@ -128,7 +118,6 @@
             let totalLitresGlobal = 0;
             let totalPrixGlobal = 0;
 
-            // ⭐ Pour chaque panier → charger les lignes
             for (const b of baskets) {
 
                 const comp = b.expand?.companion;
@@ -142,9 +131,7 @@
                 let totalCl = 0;
 
                 lines.forEach(line => {
-                    const price = line.price || 0;
-                    totalPrix += price;
-
+                    totalPrix += line.price || 0;
                     const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
                     totalCl += volCl * line.quantity;
                 });
@@ -152,11 +139,9 @@
                 const totalLitres = (totalCl / 100).toFixed(2);
                 const totalPrixFix = totalPrix.toFixed(2);
 
-                // Totaux globaux
                 totalLitresGlobal += Number(totalLitres);
                 totalPrixGlobal += Number(totalPrixFix);
 
-                // ⭐ Ligne du compagnon
                 tbody.innerHTML += `
                     <tr>
                         <td>${name}</td>
@@ -171,7 +156,6 @@
                 `;
             }
 
-            // ⭐ Ligne finale des totaux globaux
             tfoot.innerHTML = `
                 <tr>
                     <td>Total général</td>
@@ -190,7 +174,7 @@
     loadBaskets();
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF DU GROUPE — AVEC TOTAL PAR COMPAGNON
+       📄 EXPORT PDF — regroupé par compagnon + séparateurs
     --------------------------------------------------- */
     async function exportGroupPDF() {
         const { jsPDF } = window.jspdf;
@@ -206,33 +190,55 @@
             expand: "companion"
         });
 
+        // Regroupement par compagnon
+        const grouped = {};
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
+            if (!grouped[name]) grouped[name] = [];
+            grouped[name].push(b);
+        }
+
+        for (const name of Object.keys(grouped)) {
 
             doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
             doc.text(name, 10, y);
             y += 8;
 
-            const lines = await pb.collection("lines").getFullList({
-                filter: `basket = "${b.id}"`
-            });
+            let totalCompagnon = 0;
 
-            doc.setFontSize(11);
+            for (const b of grouped[name]) {
+                const lines = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
 
-            let totalPrix = 0;
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
 
-            lines.forEach(line => {
-                totalPrix += line.price || 0;
+                lines.forEach(line => {
+                    totalCompagnon += line.price || 0;
 
-                doc.text(
-                    `  ${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
-                    10,
-                    y
-                );
-                y += 7;
-            });
+                    doc.text(
+                        `  ${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
+                        14,
+                        y
+                    );
+                    y += 7;
+                });
+            }
 
-            doc.text(`  Total compagnon : ${totalPrix.toFixed(2)} €`, 10, y);
+            // TOTAL COMPAGNON — gras + fond coloré
+            doc.setFillColor(240, 220, 200);
+            doc.rect(10, y - 2, 190, 8, "F");
+
+            doc.setFont("helvetica", "bold");
+            doc.text(`Total compagnon : ${totalCompagnon.toFixed(2)} €`, 14, y + 4);
+
+            y += 14;
+
+            // Séparateur
+            doc.setDrawColor(150, 0, 0);
+            doc.line(10, y, 200, y);
             y += 10;
         }
 
@@ -240,7 +246,7 @@
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL DU GROUPE — AVEC TOTAL PAR COMPAGNON
+       📊 EXPORT EXCEL — Totaux en gras + fond coloré
     --------------------------------------------------- */
     async function exportGroupExcel() {
         const baskets = await pb.collection("baskets").getFullList({
@@ -249,6 +255,7 @@
         });
 
         let rows = [];
+        let totalRowsIndex = [];
 
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
@@ -271,6 +278,7 @@
                 });
             });
 
+            totalRowsIndex.push(rows.length);
             rows.push({
                 Compagnon: name,
                 Cave: "TOTAL",
@@ -281,8 +289,21 @@
         }
 
         const worksheet = XLSX.utils.json_to_sheet(rows);
-        const workbook = XLSX.utils.book_new();
 
+        // Styles pour les totaux
+        totalRowsIndex.forEach(idx => {
+            const excelRow = idx + 2;
+
+            ["A","B","C","D","E"].forEach(col => {
+                worksheet[`${col}${excelRow}`].s = {
+                    font: { bold: true },
+                    fill: { fgColor: { rgb: "FFE5CC" } },
+                    alignment: { indent: 1 }
+                };
+            });
+        });
+
+        const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Groupe");
 
         XLSX.writeFile(workbook, "liste-paniers-detailles.xlsx");
