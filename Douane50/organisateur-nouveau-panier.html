@@ -2,24 +2,34 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Nouveau Panier</title>
+    <title>Nouveau Panier — Voyage du 50ème</title>
     <link rel="stylesheet" href="style.css">
 
     <!-- PocketBase -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        /* Champs moins larges */
+        .input-small {
+            width: 70%;
+            margin: 0 auto 18px auto;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Créer un panier</small>
 </header>
 
 <div class="container">
     <h2>Créer un panier</h2>
 
     <label>Compagnon</label>
-    <select id="companionSelect"></select>
+    <select id="companionSelect" class="input-small"></select>
 
     <a id="btnCreate" class="btn">Créer le panier</a>
 
@@ -30,7 +40,7 @@
 </div>
 
 <footer>
-    <p>© Douane 50ème — Encaveurs & Tradition</p>
+    © Douane 50ème — Encaveurs & Tradition
 </footer>
 
 <script>
@@ -47,7 +57,7 @@
         window.location.href = "organisateur-groupes.html";
     }
 
-    // Configure le bouton retour (correction)
+    // Configure le bouton retour
     document.getElementById("btnRetourPaniers").href =
         "organisateur-liste.html?group=" + groupId;
 
