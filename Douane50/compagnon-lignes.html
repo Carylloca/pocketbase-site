@@ -47,6 +47,129 @@
     <input type="text" id="product" class="input-small" placeholder="Ex: Nom de la cave, cave 1, etc.">
 
     <label>Volume</label>
+    <select id="volume" class="input-small">
+        <option value="">-- Choisir un volume --</option>
+        <option value="37.5cl">37.5 cl</option>
+        <option value="50cl">50 cl</option>
+        <option value="75cl">75 cl</option>
+        <option value="100cl">100 cl</option>
+        <option value="150cl">150 cl</option>
+    </select>
+
+    <label>Quantité</label>
+    <input type="number" id="quantity" class="input-small" placeholder="Ex: 1">
+
+    <label>Prix TOTAL en €</label>
+    <input type="number" id="price" class="input-small" placeholder="Ex: 12.50">
+
+    <!-- ⚠️ IMPORTANT — texte modifié -->
+    <div class="important-box">
+        ⚠️ <strong>Important :</strong><br>
+        Si le prix total de la commande d'une même cave a déjà été comptabilisé dans une autre ligne,<br>
+        alors indiquez <strong>0</strong> dans le champ « Prix TOTAL en € ».
+    </div>
+
+    <div class="buttons">
+        <a id="btnAdd" class="btn">Ajouter</a>
+        <a href="compagnon-panier.html" class="btn">Retour</a>
+    </div>
+</div>
+
+<footer>
+    © Douane 50ème — Encaveurs & Tradition
+</footer>
+
+<script>
+
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
+
+    const companionId = localStorage.getItem("companionId");
+    const groupId = localStorage.getItem("groupId");
+    const panierId = localStorage.getItem("panierId");
+
+    document.getElementById("btnAdd").onclick = async () => {
+        const product = document.getElementById("product").value.trim();
+        const volume = document.getElementById("volume").value.trim();
+        const quantity = document.getElementById("quantity").value.trim();
+        const price = document.getElementById("price").value.trim();
+        const errorBox = document.getElementById("error");
+
+        errorBox.innerText = "";
+
+        if (!product || !volume || !quantity || price === "") {
+            errorBox.innerText = "Veuillez remplir tous les champs.";
+            return;
+        }
+
+        try {
+            await pb.collection("lines").create({
+                product,
+                volume,
+                quantity: Number(quantity),
+                price: Number(price),
+                basket: panierId
+            });
+
+            window.location.href = "compagnon-panier.html";
+
+        } catch (err) {
+            console.error(err);
+            errorBox.innerText = "Erreur lors de l’ajout de la ligne.";
+        }
+    };
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajout d’une ligne — Compagnon</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        /* Champs moins larges */
+        .input-small {
+            width: 70%;
+            margin: 0 auto 18px auto;
+            display: block;
+        }
+
+        /* Bloc d'information important */
+        .important-box {
+            background: #fff4e6;
+            border-left: 5px solid #d17a00;
+            padding: 12px;
+            margin: 20px auto;
+            width: 85%;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #6b1f32;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Ajouter une ligne</small>
+</header>
+
+<div class="container">
+    <h2>Ajouter une ligne</h2>
+
+    <div id="error" class="error" style="color:#b30000; font-weight:bold; margin-bottom:15px;"></div>
+
+    <label>Nom de la cave</label>
+    <input type="text" id="product" class="input-small" placeholder="Ex: Nom de la cave, cave 1, etc.">
+
+    <label>Volume</label>
     <input type="text" id="volume" class="input-small" placeholder="Ex: 75cl">
 
     <label>Quantité</label>
