@@ -2,29 +2,39 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Connexion Organisateur</title>
+    <title>Connexion Organisateur — Voyage du 50ème</title>
     <link rel="stylesheet" href="style.css">
 
     <!-- PocketBase -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        /* Champs moins larges */
+        .input-small {
+            width: 70%;
+            margin: 0 auto 18px auto;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Connexion Organisateur</small>
 </header>
 
 <div class="container">
     <h2>Connexion Organisateur</h2>
 
-    <div id="error" class="error"></div>
+    <div id="error" class="error" style="color:#b30000; font-weight:bold; margin-bottom:15px;"></div>
 
     <label>Email</label>
-    <input type="email" id="email">
+    <input type="email" id="email" class="input-small" placeholder="organisateur@douve.ch">
 
     <label>Mot de passe</label>
-    <input type="password" id="password">
+    <input type="password" id="password" class="input-small" placeholder="Votre mot de passe">
 
     <a id="btnLogin" class="btn">Connexion</a>
 
@@ -34,7 +44,7 @@
 </div>
 
 <footer>
-    <p>© Douane 50ème — Encaveurs & Tradition</p>
+    © Douane 50ème — Encaveurs & Tradition
 </footer>
 
 <script>
