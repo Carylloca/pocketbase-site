@@ -67,24 +67,32 @@
             line-height: 1.5;
             box-shadow: 0 3px 8px rgba(0,0,0,0.08);
         }
+
+        header {
+            background: #6b1f32;
+            color: white;
+            padding: 25px 10px;
+            text-align: center;
+            border-bottom: 4px solid #c9a86a;
+        }
+
+        header small {
+            display: block;
+            font-size: 16px;
+            opacity: 0.85;
+        }
     </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Ajouter une ligne</small>
 </header>
 
 <div class="container">
     <h2 id="formTitle">Ajouter une ligne</h2>
-
-    <p class="info">
-        ⚠️ <strong>Important :</strong><br>
-        Si le <strong>prix total</strong> d’une cave est indiqué sur une seule ligne,<br>
-        alors indiquez <strong>0</strong> dans le champ “Prix (euros)” des autres lignes<br>
-        appartenant à la même cave.
-    </p>
 
     <!-- Cave -->
     <label for="product">Cave</label>
@@ -114,10 +122,17 @@
     </div>
 
     <!-- Prix -->
-    <label for="price">Prix (euros)</label>
+    <label for="price">Prix TOTAL en €</label>
     <div class="input-wrapper">
         <i class="fa-solid fa-euro-sign"></i>
         <input type="number" id="price" class="input-styled" min="0" step="0.05" value="0">
+    </div>
+
+    <!-- ⚠️ IMPORTANT — placé au bon endroit -->
+    <div class="important-box">
+        ⚠️ <strong>Important :</strong><br>
+        Si le prix total de la commande d'une même cave a déjà été comptabilisé dans une autre ligne,<br>
+        indiquez <strong>0</strong> dans le champ « Prix TOTAL en € ».
     </div>
 
     <div class="buttons">
@@ -133,7 +148,6 @@
 
 <script>
 
-    /* 🔥 URL BACKEND POCKETBASE RENDER */
     const pb = new PocketBase("https://pocketbase-site.onrender.com");
 
     // Vérifie que le compagnon est connecté
