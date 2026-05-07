@@ -94,3 +94,99 @@
 
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Groupes — Voyage du 50ème</title>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Style spécifique pour les cartes de groupes */
+        .group-card {
+            background: #ffffff;
+            border-left: 6px solid #6b1f32;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .group-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #6b1f32;
+            margin-bottom: 10px;
+        }
+
+        .group-actions {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Liste des groupes</small>
+</header>
+
+<div class="container">
+    <h2>Liste des groupes</h2>
+
+    <div id="groupsList"></div>
+
+    <div class="buttons">
+        <a href="index.html" class="btn">Retour au menu principal</a>
+    </div>
+</div>
+
+<footer>
+    © Douane 50ème — Encaveurs & Tradition
+</footer>
+
+<script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+<script>
+
+    /* 🔥 URL BACKEND POCKETBASE RENDER */
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
+
+    async function loadGroups() {
+        try {
+            const groups = await pb.collection("groups").getFullList({
+                sort: "name"
+            });
+
+            const list = document.getElementById("groupsList");
+
+            if (groups.length === 0) {
+                list.innerHTML = "<p>Aucun groupe trouvé.</p>";
+                return;
+            }
+
+            groups.forEach(g => {
+                list.innerHTML += `
+                    <div class="group-card">
+                        <div class="group-title">${g.name}</div>
+
+                        <div class="group-actions">
+                            <a class="btn" href="organisateur-liste.html?group=${g.id}">
+                                Voir les paniers
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+
+        } catch (err) {
+            console.error("ERREUR loadGroups :", err);
+            alert("Erreur lors du chargement des groupes (voir console).");
+        }
+    }
+
+    loadGroups();
+</script>
+
+</body>
+</html>
