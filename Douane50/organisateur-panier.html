@@ -81,6 +81,7 @@
     }
 
     let companionName = "Compagnon";
+    let currentGroupId = null;   // ⭐ NOUVEAU : groupe réel du panier
 
     /* ---------------------------------------------------
        🔥 CHARGEMENT DU PANIER
@@ -95,6 +96,7 @@
             const group = panier.expand?.group;
 
             companionName = comp?.name || "Compagnon inconnu";
+            currentGroupId = group?.id || null;   // ⭐ NOUVEAU
 
             document.getElementById("title").innerText =
                 "Panier de : " + companionName;
@@ -175,7 +177,7 @@
     }
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF — AVEC TOTAUX COMPAGNON + GLOBAUX
+       📄 EXPORT PDF — TOTAL GLOBAL = même groupe uniquement
     --------------------------------------------------- */
     async function exportPDF() {
         const { jsPDF } = window.jspdf;
@@ -233,22 +235,34 @@
 
         y += 20;
 
-        /* --- TOTAL GLOBAL --- */
-        const allLines = await pb.collection("lines").getFullList();
-
+        /* ---------------------------------------------------
+           🔥 TOTAL GLOBAL DU GROUPE (corrigé)
+        --------------------------------------------------- */
         let globalPrix = 0;
         let globalCl = 0;
 
-        allLines.forEach(l => {
-            const p = l.price || 0;
-            const v = parseFloat(l.volume.replace("cl", "")) || 0;
+        if (currentGroupId) {
+            const groupBaskets = await pb.collection("baskets").getFullList({
+                filter: `group = "${currentGroupId}"`
+            });
 
-            globalPrix += p;
-            globalCl += v * l.quantity;
-        });
+            for (const b of groupBaskets) {
+                const linesGroup = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
+
+                linesGroup.forEach(l => {
+                    const p = l.price || 0;
+                    const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+                    globalPrix += p;
+                    globalCl += v * l.quantity;
+                });
+            }
+        }
 
         const globalLitres = (globalCl / 100).toFixed(2);
-        const globalTexte = `TOTAL GLOBAL : ${globalPrix.toFixed(2)} € — ${globalLitres} litres`;
+        const globalTexte = `TOTAL GLOBAL GROUPE : ${globalPrix.toFixed(2)} € — ${globalLitres} litres`;
 
         const globalWidth = doc.getTextWidth(globalTexte);
 
@@ -264,7 +278,7 @@
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL — AVEC TOTAUX COMPAGNON + GLOBAUX
+       📊 EXPORT EXCEL — TOTAL GLOBAL = même groupe uniquement
     --------------------------------------------------- */
     async function exportExcel() {
         const lines = await pb.collection("lines").getFullList({
@@ -301,24 +315,36 @@
             Prix: totalPrix
         });
 
-        /* --- TOTAL GLOBAL --- */
-        const allLines = await pb.collection("lines").getFullList();
-
+        /* ---------------------------------------------------
+           🔥 TOTAL GLOBAL DU GROUPE (corrigé)
+        --------------------------------------------------- */
         let globalPrix = 0;
         let globalCl = 0;
 
-        allLines.forEach(l => {
-            const p = l.price || 0;
-            const v = parseFloat(l.volume.replace("cl", "")) || 0;
+        if (currentGroupId) {
+            const groupBaskets = await pb.collection("baskets").getFullList({
+                filter: `group = "${currentGroupId}"`
+            });
 
-            globalPrix += p;
-            globalCl += v * l.quantity;
-        });
+            for (const b of groupBaskets) {
+                const linesGroup = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
+
+                linesGroup.forEach(l => {
+                    const p = l.price || 0;
+                    const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+                    globalPrix += p;
+                    globalCl += v * l.quantity;
+                });
+            }
+        }
 
         const globalLitres = (globalCl / 100).toFixed(2);
 
         data.push({
-            Compagnon: "TOTAL GLOBAL",
+            Compagnon: "TOTAL GLOBAL GROUPE",
             Cave: "",
             Volume: globalLitres + " litres",
             Quantité: "",
