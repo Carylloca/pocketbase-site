@@ -5,6 +5,7 @@
     <title>Détail du panier</title>
     <link rel="stylesheet" href="style.css">
 
+    <!-- PocketBase -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
 
     <!-- Librairies Export PDF & Excel -->
@@ -81,9 +82,11 @@
 
     let companionName = "Compagnon";
 
+    /* ---------------------------------------------------
+       🔥 CHARGEMENT DU PANIER
+    --------------------------------------------------- */
     async function loadPanier() {
         try {
-            // Charger le panier + compagnon + groupe
             const panier = await pb.collection("baskets").getOne(panierId, {
                 expand: "companion,group"
             });
@@ -93,11 +96,9 @@
 
             companionName = comp?.name || "Compagnon inconnu";
 
-            // ⭐ Titre
             document.getElementById("title").innerText =
                 "Panier de : " + companionName;
 
-            // ⭐ Bouton retour vers la liste des paniers
             if (group) {
                 localStorage.setItem("currentGroup", group.id);
                 document.getElementById("btnRetourListe").href =
@@ -107,7 +108,6 @@
                     "organisateur-liste.html";
             }
 
-            // ⭐ Charger les lignes
             loadLines();
 
         } catch (err) {
@@ -116,6 +116,9 @@
         }
     }
 
+    /* ---------------------------------------------------
+       🔥 CHARGEMENT DES LIGNES
+    --------------------------------------------------- */
     async function loadLines() {
         const list = document.getElementById("linesList");
         list.innerHTML = "";
@@ -172,7 +175,7 @@
     }
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF — AVEC NOM DU COMPAGNON
+       📄 EXPORT PDF — AVEC TOTAUX COMPAGNON + GLOBAUX
     --------------------------------------------------- */
     async function exportPDF() {
         const { jsPDF } = window.jspdf;
@@ -181,29 +184,87 @@
         doc.setFontSize(18);
         doc.text(`Panier du compagnon : ${companionName}`, 10, 15);
 
-        let y = 30;
-
         const lines = await pb.collection("lines").getFullList({
             filter: `basket = "${panierId}"`,
             sort: "product"
         });
 
+        let y = 30;
+        let totalPrix = 0;
+        let totalCl = 0;
+
         doc.setFontSize(12);
 
         lines.forEach(line => {
+            const price = line.price || 0;
+            const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+
+            totalPrix += price;
+            totalCl += volCl * line.quantity;
+
             doc.text(
-                `${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
+                `${line.product} — ${line.volume} — x${line.quantity} — ${price.toFixed(2)} €`,
                 10,
                 y
             );
+
             y += 8;
+
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
         });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+        const totalTexte = `TOTAL COMPAGNON : ${totalPrix.toFixed(2)} € — ${totalLitres} litres`;
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const textWidth = doc.getTextWidth(totalTexte);
+        const padding = 4;
+
+        const boxX = pageWidth - textWidth - padding * 2 - 10;
+        const boxY = y + 4;
+
+        doc.setFillColor(240, 220, 210);
+        doc.rect(boxX, boxY - 6, textWidth + padding * 2, 10, "F");
+
+        doc.text(totalTexte, pageWidth - 10, y + 2, { align: "right" });
+
+        y += 20;
+
+        /* --- TOTAL GLOBAL --- */
+        const allLines = await pb.collection("lines").getFullList();
+
+        let globalPrix = 0;
+        let globalCl = 0;
+
+        allLines.forEach(l => {
+            const p = l.price || 0;
+            const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+            globalPrix += p;
+            globalCl += v * l.quantity;
+        });
+
+        const globalLitres = (globalCl / 100).toFixed(2);
+        const globalTexte = `TOTAL GLOBAL : ${globalPrix.toFixed(2)} € — ${globalLitres} litres`;
+
+        const globalWidth = doc.getTextWidth(globalTexte);
+
+        const boxX2 = pageWidth - globalWidth - padding * 2 - 10;
+        const boxY2 = y + 4;
+
+        doc.setFillColor(220, 200, 180);
+        doc.rect(boxX2, boxY2 - 6, globalWidth + padding * 2, 10, "F");
+
+        doc.text(globalTexte, pageWidth - 10, y + 2, { align: "right" });
 
         doc.save("liste-paniers-detailles.pdf");
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL — AVEC NOM DU COMPAGNON
+       📊 EXPORT EXCEL — AVEC TOTAUX COMPAGNON + GLOBAUX
     --------------------------------------------------- */
     async function exportExcel() {
         const lines = await pb.collection("lines").getFullList({
@@ -211,13 +272,58 @@
             sort: "product"
         });
 
-        const data = lines.map(l => ({
-            Compagnon: companionName,
-            Cave: l.product,
-            Volume: l.volume,
-            Quantité: l.quantity,
-            Prix: l.price
-        }));
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        const data = lines.map(l => {
+            const price = l.price || 0;
+            const volCl = parseFloat(l.volume.replace("cl", "")) || 0;
+
+            totalPrix += price;
+            totalCl += volCl * l.quantity;
+
+            return {
+                Compagnon: companionName,
+                Cave: l.product,
+                Volume: l.volume,
+                Quantité: l.quantity,
+                Prix: price
+            };
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+
+        data.push({
+            Compagnon: "TOTAL COMPAGNON",
+            Cave: "",
+            Volume: totalLitres + " litres",
+            Quantité: "",
+            Prix: totalPrix
+        });
+
+        /* --- TOTAL GLOBAL --- */
+        const allLines = await pb.collection("lines").getFullList();
+
+        let globalPrix = 0;
+        let globalCl = 0;
+
+        allLines.forEach(l => {
+            const p = l.price || 0;
+            const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+            globalPrix += p;
+            globalCl += v * l.quantity;
+        });
+
+        const globalLitres = (globalCl / 100).toFixed(2);
+
+        data.push({
+            Compagnon: "TOTAL GLOBAL",
+            Cave: "",
+            Volume: globalLitres + " litres",
+            Quantité: "",
+            Prix: globalPrix
+        });
 
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
