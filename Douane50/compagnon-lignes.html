@@ -8,6 +8,182 @@
     <!-- PocketBase -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
 
+    <!-- Icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        /* Champs stylés */
+        .input-wrapper {
+            width: 55%;
+            margin: 0 auto 18px auto;
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b1f32;
+            opacity: 0.8;
+        }
+
+        .input-styled {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background: #fffdf8;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: 0.2s;
+        }
+
+        .input-styled:focus {
+            border-color: #6b1f32;
+            box-shadow: 0 0 6px rgba(107, 31, 50, 0.3);
+            outline: none;
+        }
+
+        /* Select stylé */
+        select.input-styled {
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%236b1f32' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px;
+        }
+
+        /* Bloc d'information important */
+        .important-box {
+            background: #fff4e6;
+            border-left: 5px solid #d17a00;
+            padding: 14px;
+            margin: 25px auto;
+            width: 85%;
+            border-radius: 8px;
+            font-size: 15px;
+            color: #6b1f32;
+            line-height: 1.5;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Ajouter une ligne</small>
+</header>
+
+<div class="container">
+    <h2>Ajouter une ligne</h2>
+
+    <div id="error" class="error" style="color:#b30000; font-weight:bold; margin-bottom:15px;"></div>
+
+    <!-- Nom de la cave -->
+    <label>Nom de la cave</label>
+    <div class="input-wrapper">
+        <i class="fa-solid fa-wine-bottle"></i>
+        <input type="text" id="product" class="input-styled" placeholder="Ex: Cave du Château">
+    </div>
+
+    <!-- Volume -->
+    <label>Volume</label>
+    <div class="input-wrapper">
+        <i class="fa-solid fa-flask"></i>
+        <select id="volume" class="input-styled">
+            <option value="">-- Choisir un volume --</option>
+            <option value="37.5cl">37.5 cl</option>
+            <option value="50cl">50 cl</option>
+            <option value="75cl">75 cl</option>
+            <option value="100cl">100 cl</option>
+            <option value="150cl">150 cl</option>
+        </select>
+    </div>
+
+    <!-- Quantité -->
+    <label>Quantité</label>
+    <div class="input-wrapper">
+        <i class="fa-solid fa-hashtag"></i>
+        <input type="number" id="quantity" class="input-styled" placeholder="Ex: 1">
+    </div>
+
+    <!-- Prix -->
+    <label>Prix TOTAL en €</label>
+    <div class="input-wrapper">
+        <i class="fa-solid fa-euro-sign"></i>
+        <input type="number" id="price" class="input-styled" placeholder="Ex: 12.50">
+    </div>
+
+    <!-- Bloc important -->
+    <div class="important-box">
+        ⚠️ <strong>Important :</strong><br>
+        Si le prix total de la commande d'une même cave a déjà été comptabilisé dans une autre ligne,<br>
+        indiquez <strong>0</strong> dans le champ « Prix TOTAL en € ».
+    </div>
+
+    <div class="buttons">
+        <a id="btnAdd" class="btn">Ajouter</a>
+        <a href="compagnon-panier.html" class="btn">Retour</a>
+    </div>
+</div>
+
+<footer>
+    © Douane 50ème — Encaveurs & Tradition
+</footer>
+
+<script>
+
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
+
+    const panierId = localStorage.getItem("panierId");
+
+    document.getElementById("btnAdd").onclick = async () => {
+        const product = document.getElementById("product").value.trim();
+        const volume = document.getElementById("volume").value.trim();
+        const quantity = document.getElementById("quantity").value.trim();
+        const price = document.getElementById("price").value.trim();
+        const errorBox = document.getElementById("error");
+
+        errorBox.innerText = "";
+
+        if (!product || !volume || !quantity || price === "") {
+            errorBox.innerText = "Veuillez remplir tous les champs.";
+            return;
+        }
+
+        try {
+            await pb.collection("lines").create({
+                product,
+                volume,
+                quantity: Number(quantity),
+                price: Number(price),
+                basket: panierId
+            });
+
+            window.location.href = "compagnon-panier.html";
+
+        } catch (err) {
+            console.error(err);
+            errorBox.innerText = "Erreur lors de l’ajout de la ligne.";
+        }
+    };
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajout d’une ligne — Compagnon</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
     <style>
         /* Champs plus étroits et parfaitement centrés */
         .input-small {
