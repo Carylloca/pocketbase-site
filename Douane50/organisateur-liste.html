@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Paniers du groupe</title>
+    <title>Paniers du groupe — Voyage du 50ème</title>
     <link rel="stylesheet" href="style.css">
 
     <!-- Librairies Export PDF & Excel -->
@@ -10,24 +10,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        /* Carte moderne pour chaque compagnon */
+        .basket-card {
+            background: #ffffff;
+            border-left: 6px solid #6b1f32;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
         }
-        th, td {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-            text-align: left;
+
+        .basket-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #6b1f32;
+            margin-bottom: 10px;
         }
-        th {
-            background: #eee;
-            font-weight: bold;
+
+        .basket-info {
+            font-size: 15px;
+            margin-bottom: 10px;
         }
-        tfoot td {
-            font-weight: bold;
+
+        .basket-info span {
+            font-weight: 600;
+        }
+
+        .total-card {
             background: #f5f0eb;
-            border-top: 2px solid #6a0f25;
+            border-left: 6px solid #c9a86a;
         }
     </style>
 </head>
@@ -35,7 +46,8 @@
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Paniers du groupe</small>
 </header>
 
 <div class="container">
@@ -54,7 +66,7 @@
 </div>
 
 <footer>
-    <p>© Douane 50ème — Encaveurs & Tradition</p>
+    © Douane 50ème — Encaveurs & Tradition
 </footer>
 
 <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
@@ -100,24 +112,6 @@
                 return nameA.localeCompare(nameB);
             });
 
-            list.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Compagnon</th>
-                            <th>Total litres</th>
-                            <th>Total prix</th>
-                            <th>Voir le panier</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody"></tbody>
-                    <tfoot id="tfoot"></tfoot>
-                </table>
-            `;
-
-            const tbody = document.getElementById("tbody");
-            const tfoot = document.getElementById("tfoot");
-
             let totalLitresGlobal = 0;
             let totalPrixGlobal = 0;
 
@@ -145,27 +139,28 @@
                 totalLitresGlobal += Number(totalLitres);
                 totalPrixGlobal += Number(totalPrixFix);
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${name}</td>
-                        <td>${totalLitres} L</td>
-                        <td>${totalPrixFix} €</td>
-                        <td>
-                            <a class="btn" href="organisateur-panier.html?panier=${b.id}&group=${groupId}">
-                                Voir le panier
-                            </a>
-                        </td>
-                    </tr>
+                list.innerHTML += `
+                    <div class="basket-card">
+                        <div class="basket-title">${name}</div>
+                        <div class="basket-info">
+                            <span>Total litres :</span> ${totalLitres} L<br>
+                            <span>Total prix :</span> ${totalPrixFix} €
+                        </div>
+                        <a class="btn" href="organisateur-panier.html?panier=${b.id}&group=${groupId}">
+                            Voir le panier
+                        </a>
+                    </div>
                 `;
             }
 
-            tfoot.innerHTML = `
-                <tr>
-                    <td>Total général du groupe</td>
-                    <td>${totalLitresGlobal.toFixed(2)} L</td>
-                    <td>${totalPrixGlobal.toFixed(2)} €</td>
-                    <td></td>
-                </tr>
+            list.innerHTML += `
+                <div class="basket-card total-card">
+                    <div class="basket-title">Total général du groupe</div>
+                    <div class="basket-info">
+                        <span>Total litres :</span> ${totalLitresGlobal.toFixed(2)} L<br>
+                        <span>Total prix :</span> ${totalPrixGlobal.toFixed(2)} €
+                    </div>
+                </div>
             `;
 
         } catch (err) {
@@ -197,6 +192,7 @@
         let totalGlobalCl = 0;
 
         const grouped = {};
+
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
             if (!grouped[name]) grouped[name] = [];
