@@ -100,6 +100,30 @@ input, select {
     border: 1px solid #ccc;
     font-size: 16px;
     background: #fffdf8;
+    box-sizing: border-box;
+}
+
+/* Champs réduits et centrés */
+.input-small {
+    width: 55%;
+    margin: 0 auto 18px auto;
+    display: block;
+    padding: 10px;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+/* Harmonisation du SELECT avec les INPUTS */
+select.input-small {
+    width: 55%;
+    margin: 0 auto 18px auto;
+    display: block;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fffdf8;
+    appearance: none;
+    box-sizing: border-box;
 }
 
 /* ---------------------------------------------------
@@ -232,5 +256,13 @@ footer {
     .container {
         margin: 20px;
         padding: 15px;
+    }
+
+    .input-small {
+        width: 90%;
+    }
+
+    select.input-small {
+        width: 90%;
     }
 }
