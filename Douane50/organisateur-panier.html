@@ -2,6 +2,366 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <title>Détail du panier — Voyage du 50ème</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PocketBase -->
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <!-- Librairies Export PDF & Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* Carte moderne pour chaque ligne */
+        .line-card {
+            background: #ffffff;
+            border-left: 6px solid #6b1f32;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .line-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #6b1f32;
+            margin-bottom: 6px;
+        }
+
+        .line-info {
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .line-info span {
+            font-weight: 600;
+        }
+
+        .total-card {
+            background: #f5f0eb;
+            border-left: 6px solid #c9a86a;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Détail du panier</small>
+</header>
+
+<div class="container">
+    <h2 id="title">Chargement...</h2>
+
+    <div id="linesList"></div>
+
+    <div class="buttons">
+        <a class="btn" onclick="exportPDF()">Export PDF</a>
+        <a class="btn" onclick="exportExcel()">Export Excel</a>
+
+        <a id="btnRetourListe" class="btn">Retour à la liste des paniers</a>
+        <a href="organisateur-groupes.html" class="btn">Retour au menu</a>
+    </div>
+</div>
+
+<footer>
+    © Douane 50ème — Encaveurs & Tradition
+</footer>
+
+<script>
+
+    const pb = new PocketBase("https://pocketbase-site.onrender.com");
+
+    const params = new URLSearchParams(window.location.search);
+    const panierId = params.get("panier");
+
+    if (!panierId) {
+        alert("Panier introuvable.");
+        window.location.href = "organisateur-groupes.html";
+    }
+
+    let groupId = params.get("group");
+    if (!groupId) groupId = localStorage.getItem("currentGroup");
+
+    let companionName = "Compagnon";
+    let currentGroupId = null;
+
+    /* ---------------------------------------------------
+       🔥 CHARGEMENT DU PANIER
+    --------------------------------------------------- */
+    async function loadPanier() {
+        try {
+            const panier = await pb.collection("baskets").getOne(panierId, {
+                expand: "companion,group"
+            });
+
+            const comp = panier.expand?.companion;
+            const group = panier.expand?.group;
+
+            companionName = comp?.name || "Compagnon inconnu";
+            currentGroupId = group?.id || null;
+
+            document.getElementById("title").innerText =
+                "Panier de : " + companionName;
+
+            if (group) {
+                localStorage.setItem("currentGroup", group.id);
+                document.getElementById("btnRetourListe").href =
+                    "organisateur-liste.html?group=" + group.id;
+            }
+
+            loadLines();
+
+        } catch (err) {
+            console.error("ERREUR getOne baskets :", err);
+            alert("Panier introuvable.");
+        }
+    }
+
+    /* ---------------------------------------------------
+       🔥 CHARGEMENT DES LIGNES
+    --------------------------------------------------- */
+    async function loadLines() {
+        const list = document.getElementById("linesList");
+        list.innerHTML = "";
+
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product,created"
+        });
+
+        if (lines.length === 0) {
+            list.innerHTML = "<p>Aucune ligne dans ce panier.</p>";
+            return;
+        }
+
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        lines.forEach(line => {
+            const price = line.price || 0;
+            const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+
+            totalPrix += price;
+            totalCl += volCl * line.quantity;
+
+            list.innerHTML += `
+                <div class="line-card">
+                    <div class="line-title">${line.product}</div>
+                    <div class="line-info"><span>Volume :</span> ${line.volume}</div>
+                    <div class="line-info"><span>Quantité :</span> ${line.quantity}</div>
+                    <div class="line-info"><span>Prix :</span> ${price.toFixed(2)} €</div>
+                </div>
+            `;
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+
+        list.innerHTML += `
+            <div class="line-card total-card">
+                <div class="line-title">Total du panier</div>
+                <div class="line-info"><span>Total litres :</span> ${totalLitres} L</div>
+                <div class="line-info"><span>Total prix :</span> ${totalPrix.toFixed(2)} €</div>
+            </div>
+        `;
+    }
+
+    /* ---------------------------------------------------
+       📄 EXPORT PDF — TOTAL GLOBAL = même groupe uniquement
+    --------------------------------------------------- */
+    async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text(`Panier du compagnon : ${companionName}`, 10, 15);
+
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product"
+        });
+
+        let y = 30;
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        doc.setFontSize(12);
+
+        lines.forEach(line => {
+            const price = line.price || 0;
+            const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+
+            totalPrix += price;
+            totalCl += volCl * line.quantity;
+
+            doc.text(
+                `${line.product} — ${line.volume} — x${line.quantity} — ${price.toFixed(2)} €`,
+                10,
+                y
+            );
+
+            y += 8;
+
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+        const totalTexte = `TOTAL COMPAGNON : ${totalPrix.toFixed(2)} € — ${totalLitres} litres`;
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const textWidth = doc.getTextWidth(totalTexte);
+        const padding = 4;
+
+        const boxX = pageWidth - textWidth - padding * 2 - 10;
+        const boxY = y + 4;
+
+        doc.setFillColor(240, 220, 210);
+        doc.rect(boxX, boxY - 6, textWidth + padding * 2, 10, "F");
+
+        doc.text(totalTexte, pageWidth - 10, y + 2, { align: "right" });
+
+        y += 20;
+
+        /* ---------------------------------------------------
+           🔥 TOTAL GLOBAL DU GROUPE
+        --------------------------------------------------- */
+        let globalPrix = 0;
+        let globalCl = 0;
+
+        if (currentGroupId) {
+            const groupBaskets = await pb.collection("baskets").getFullList({
+                filter: `group = "${currentGroupId}"`
+            });
+
+            for (const b of groupBaskets) {
+                const linesGroup = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
+
+                linesGroup.forEach(l => {
+                    const p = l.price || 0;
+                    const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+                    globalPrix += p;
+                    globalCl += v * l.quantity;
+                });
+            }
+        }
+
+        const globalLitres = (globalCl / 100).toFixed(2);
+        const globalTexte = `TOTAL GLOBAL GROUPE : ${globalPrix.toFixed(2)} € — ${globalLitres} litres`;
+
+        const globalWidth = doc.getTextWidth(globalTexte);
+
+        const boxX2 = pageWidth - globalWidth - padding * 2 - 10;
+        const boxY2 = y + 4;
+
+        doc.setFillColor(220, 200, 180);
+        doc.rect(boxX2, boxY2 - 6, globalWidth + padding * 2, 10, "F");
+
+        doc.text(globalTexte, pageWidth - 10, y + 2, { align: "right" });
+
+        doc.save("liste-paniers-detailles.pdf");
+    }
+
+    /* ---------------------------------------------------
+       📊 EXPORT EXCEL — TOTAL GLOBAL = même groupe uniquement
+    --------------------------------------------------- */
+    async function exportExcel() {
+        const lines = await pb.collection("lines").getFullList({
+            filter: `basket = "${panierId}"`,
+            sort: "product"
+        });
+
+        let totalPrix = 0;
+        let totalCl = 0;
+
+        const data = lines.map(l => {
+            const price = l.price || 0;
+            const volCl = parseFloat(l.volume.replace("cl", "")) || 0;
+
+            totalPrix += price;
+            totalCl += volCl * l.quantity;
+
+            return {
+                Compagnon: companionName,
+                Cave: l.product,
+                Volume: l.volume,
+                Quantité: l.quantity,
+                Prix: price
+            };
+        });
+
+        const totalLitres = (totalCl / 100).toFixed(2);
+
+        data.push({
+            Compagnon: "TOTAL COMPAGNON",
+            Cave: "",
+            Volume: totalLitres + " litres",
+            Quantité: "",
+            Prix: totalPrix
+        });
+
+        /* ---------------------------------------------------
+           🔥 TOTAL GLOBAL DU GROUPE
+        --------------------------------------------------- */
+        let globalPrix = 0;
+        let globalCl = 0;
+
+        if (currentGroupId) {
+            const groupBaskets = await pb.collection("baskets").getFullList({
+                filter: `group = "${currentGroupId}"`
+            });
+
+            for (const b of groupBaskets) {
+                const linesGroup = await pb.collection("lines").getFullList({
+                    filter: `basket = "${b.id}"`
+                });
+
+                linesGroup.forEach(l => {
+                    const p = l.price || 0;
+                    const v = parseFloat(l.volume.replace("cl", "")) || 0;
+
+                    globalPrix += p;
+                    globalCl += v * l.quantity;
+                });
+            }
+        }
+
+        const globalLitres = (globalCl / 100).toFixed(2);
+
+        data.push({
+            Compagnon: "TOTAL GLOBAL GROUPE",
+            Cave: "",
+            Volume: globalLitres + " litres",
+            Quantité: "",
+            Prix: globalPrix
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Panier");
+
+        XLSX.writeFile(workbook, "liste-paniers-detailles.xlsx");
+    }
+
+    loadPanier();
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
     <title>Détail du panier</title>
     <link rel="stylesheet" href="style.css">
 
