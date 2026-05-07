@@ -2,33 +2,43 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Nouveau Groupe</title>
+    <title>Nouveau Groupe — Voyage du 50ème</title>
     <link rel="stylesheet" href="style.css">
 
     <!-- PocketBase -->
     <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+
+    <style>
+        /* Champs moins larges */
+        .input-small {
+            width: 70%;
+            margin: 0 auto 18px auto;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Créer un groupe</small>
 </header>
 
 <div class="container">
     <h2>Créer un groupe</h2>
 
     <label>Nom du groupe</label>
-    <input type="text" id="name">
+    <input type="text" id="name" class="input-small" placeholder="Ex : Groupe Bordeaux 2026">
 
     <label>Date de début</label>
-    <input type="date" id="date_debut">
+    <input type="date" id="date_debut" class="input-small">
 
     <label>Date de fin</label>
-    <input type="date" id="date_fin">
+    <input type="date" id="date_fin" class="input-small">
 
     <label>Code d'accès généré</label>
-    <input type="text" id="code" readonly>
+    <input type="text" id="code" class="input-small" readonly>
 
     <a id="btnCreate" class="btn">Créer le groupe</a>
 
@@ -38,7 +48,7 @@
 </div>
 
 <footer>
-    <p>© Douane 50ème — Encaveurs & Tradition</p>
+    © Douane 50ème — Encaveurs & Tradition
 </footer>
 
 <script>
