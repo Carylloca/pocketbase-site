@@ -73,6 +73,9 @@
 
     localStorage.setItem("currentGroup", groupId);
 
+    /* ---------------------------------------------------
+       🔥 CHARGEMENT DES PANIERS DU GROUPE
+    --------------------------------------------------- */
     async function loadBaskets() {
         try {
             const group = await pb.collection("groups").getOne(groupId);
@@ -148,7 +151,7 @@
                         <td>${totalLitres} L</td>
                         <td>${totalPrixFix} €</td>
                         <td>
-                            <a class="btn" href="organisateur-panier.html?panier=${b.id}">
+                            <a class="btn" href="organisateur-panier.html?panier=${b.id}&group=${groupId}">
                                 Voir le panier
                             </a>
                         </td>
@@ -158,7 +161,7 @@
 
             tfoot.innerHTML = `
                 <tr>
-                    <td>Total général</td>
+                    <td>Total général du groupe</td>
                     <td>${totalLitresGlobal.toFixed(2)} L</td>
                     <td>${totalPrixGlobal.toFixed(2)} €</td>
                     <td></td>
@@ -174,7 +177,7 @@
     loadBaskets();
 
     /* ---------------------------------------------------
-       📄 EXPORT PDF — regroupé par compagnon + séparateurs
+       📄 EXPORT PDF — Totaux compagnon + total global groupe
     --------------------------------------------------- */
     async function exportGroupPDF() {
         const { jsPDF } = window.jspdf;
@@ -190,7 +193,9 @@
             expand: "companion"
         });
 
-        // Regroupement par compagnon
+        let totalGlobalPrix = 0;
+        let totalGlobalCl = 0;
+
         const grouped = {};
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
@@ -206,6 +211,7 @@
             y += 8;
 
             let totalCompagnon = 0;
+            let totalCompCl = 0;
 
             for (const b of grouped[name]) {
                 const lines = await pb.collection("lines").getFullList({
@@ -216,10 +222,17 @@
                 doc.setFont("helvetica", "normal");
 
                 lines.forEach(line => {
-                    totalCompagnon += line.price || 0;
+                    const price = line.price || 0;
+                    const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+
+                    totalCompagnon += price;
+                    totalCompCl += volCl * line.quantity;
+
+                    totalGlobalPrix += price;
+                    totalGlobalCl += volCl * line.quantity;
 
                     doc.text(
-                        `  ${line.product} — ${line.volume} — x${line.quantity} — ${line.price.toFixed(2)} €`,
+                        `  ${line.product} — ${line.volume} — x${line.quantity} — ${price.toFixed(2)} €`,
                         14,
                         y
                     );
@@ -227,26 +240,35 @@
                 });
             }
 
-            // TOTAL COMPAGNON — gras + fond coloré
+            const litresComp = (totalCompCl / 100).toFixed(2);
+
             doc.setFillColor(240, 220, 200);
             doc.rect(10, y - 2, 190, 8, "F");
 
             doc.setFont("helvetica", "bold");
-            doc.text(`Total compagnon : ${totalCompagnon.toFixed(2)} €`, 14, y + 4);
+            doc.text(`Total compagnon : ${totalCompagnon.toFixed(2)} € — ${litresComp} L`, 14, y + 4);
 
             y += 14;
 
-            // Séparateur
             doc.setDrawColor(150, 0, 0);
             doc.line(10, y, 200, y);
             y += 10;
         }
 
-        doc.save("liste-paniers-detailles.pdf");
+        const litresGlobal = (totalGlobalCl / 100).toFixed(2);
+        const totalGlobalText = `TOTAL GLOBAL GROUPE : ${totalGlobalPrix.toFixed(2)} € — ${litresGlobal} L`;
+
+        doc.setFillColor(220, 200, 180);
+        doc.rect(10, y, 190, 10, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.text(totalGlobalText, 14, y + 7);
+
+        doc.save("liste-paniers-groupe.pdf");
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL — Totaux en gras + fond coloré
+       📊 EXPORT EXCEL — Totaux compagnon + total global groupe
     --------------------------------------------------- */
     async function exportGroupExcel() {
         const baskets = await pb.collection("baskets").getFullList({
@@ -257,6 +279,9 @@
         let rows = [];
         let totalRowsIndex = [];
 
+        let totalGlobalPrix = 0;
+        let totalGlobalCl = 0;
+
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
 
@@ -265,48 +290,51 @@
             });
 
             let totalPrix = 0;
+            let totalCl = 0;
 
             lines.forEach(line => {
-                totalPrix += line.price || 0;
+                const price = line.price || 0;
+                const volCl = parseFloat(line.volume.replace("cl", "")) || 0;
+
+                totalPrix += price;
+                totalCl += volCl * line.quantity;
+
+                totalGlobalPrix += price;
+                totalGlobalCl += volCl * line.quantity;
 
                 rows.push({
                     Compagnon: name,
                     Cave: line.product,
                     Volume: line.volume,
                     Quantité: line.quantity,
-                    Prix: line.price
+                    Prix: price
                 });
             });
 
             totalRowsIndex.push(rows.length);
             rows.push({
                 Compagnon: name,
-                Cave: "TOTAL",
-                Volume: "",
+                Cave: "TOTAL COMPAGNON",
+                Volume: (totalCl / 100).toFixed(2) + " L",
                 Quantité: "",
                 Prix: totalPrix.toFixed(2)
             });
         }
 
-        const worksheet = XLSX.utils.json_to_sheet(rows);
-
-        // Styles pour les totaux
-        totalRowsIndex.forEach(idx => {
-            const excelRow = idx + 2;
-
-            ["A","B","C","D","E"].forEach(col => {
-                worksheet[`${col}${excelRow}`].s = {
-                    font: { bold: true },
-                    fill: { fgColor: { rgb: "FFE5CC" } },
-                    alignment: { indent: 1 }
-                };
-            });
+        rows.push({
+            Compagnon: "TOTAL GLOBAL GROUPE",
+            Cave: "",
+            Volume: (totalGlobalCl / 100).toFixed(2) + " L",
+            Quantité: "",
+            Prix: totalGlobalPrix.toFixed(2)
         });
 
+        const worksheet = XLSX.utils.json_to_sheet(rows);
         const workbook = XLSX.utils.book_new();
+
         XLSX.utils.book_append_sheet(workbook, worksheet, "Groupe");
 
-        XLSX.writeFile(workbook, "liste-paniers-detailles.xlsx");
+        XLSX.writeFile(workbook, "liste-paniers-groupe.xlsx");
     }
 
 </script>
