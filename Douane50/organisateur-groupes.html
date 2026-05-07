@@ -2,14 +2,38 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Groupes</title>
+    <title>Groupes — Voyage du 50ème</title>
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Style spécifique pour les cartes de groupes */
+        .group-card {
+            background: #ffffff;
+            border-left: 6px solid #6b1f32;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .group-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #6b1f32;
+            margin-bottom: 10px;
+        }
+
+        .group-actions {
+            margin-top: 10px;
+        }
+    </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Douane 50ème</h1>
+    Voyage du 50ème des Compagnons de la Douve
+    <small>Liste des groupes</small>
 </header>
 
 <div class="container">
@@ -23,7 +47,7 @@
 </div>
 
 <footer>
-    <p>© Douane 50ème — Encaveurs & Tradition</p>
+    © Douane 50ème — Encaveurs & Tradition
 </footer>
 
 <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
@@ -34,7 +58,6 @@
 
     async function loadGroups() {
         try {
-            // Charger tous les groupes
             const groups = await pb.collection("groups").getFullList({
                 sort: "name"
             });
@@ -46,31 +69,17 @@
                 return;
             }
 
-            // Construction du tableau
-            list.innerHTML = `
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Nom du groupe</th>
-                            <th>Voir les paniers</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyGroups"></tbody>
-                </table>
-            `;
-
-            const tbody = document.getElementById("tbodyGroups");
-
             groups.forEach(g => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${g.name}</td>
-                        <td>
+                list.innerHTML += `
+                    <div class="group-card">
+                        <div class="group-title">${g.name}</div>
+
+                        <div class="group-actions">
                             <a class="btn" href="organisateur-liste.html?group=${g.id}">
-                                Ouvrir
+                                Voir les paniers
                             </a>
-                        </td>
-                    </tr>
+                        </div>
+                    </div>
                 `;
             });
 
