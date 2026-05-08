@@ -264,7 +264,7 @@
     }
 
     /* ---------------------------------------------------
-       📊 EXPORT EXCEL — Totaux compagnon + total global groupe
+       📊 EXPORT EXCEL — Version améliorée (bordures + auto-fit)
     --------------------------------------------------- */
     async function exportGroupExcel() {
         const baskets = await pb.collection("baskets").getFullList({
@@ -273,10 +273,20 @@
         });
 
         let rows = [];
-        let totalRowsIndex = [];
 
         let totalGlobalPrix = 0;
         let totalGlobalCl = 0;
+
+        // Ligne 1 : titres
+        rows.push({
+            Compagnon: "Compagnon",
+            Cave: "Cave",
+            Volume: "Volume",
+            Quantité: "Quantité",
+            Prix: "Prix (€)",
+            TotalLitres: "Total Litres (L)",
+            TotalPrix: "Total Prix (€)"
+        });
 
         for (const b of baskets) {
             const name = b.expand?.companion?.name || "Inconnu";
@@ -303,31 +313,111 @@
                     Cave: line.product,
                     Volume: line.volume,
                     Quantité: line.quantity,
-                    Prix: price
+                    Prix: price.toFixed(2),
+                    TotalLitres: "",
+                    TotalPrix: ""
                 });
             });
 
-            totalRowsIndex.push(rows.length);
+            // Ligne TOTAL COMPAGNON
             rows.push({
                 Compagnon: name,
                 Cave: "TOTAL COMPAGNON",
-                Volume: (totalCl / 100).toFixed(2) + " L",
+                Volume: "",
                 Quantité: "",
-                Prix: totalPrix.toFixed(2)
+                Prix: "",
+                TotalLitres: (totalCl / 100).toFixed(2),
+                TotalPrix: totalPrix.toFixed(2)
             });
         }
 
+        // TOTAL GLOBAL
         rows.push({
             Compagnon: "TOTAL GLOBAL GROUPE",
             Cave: "",
-            Volume: (totalGlobalCl / 100).toFixed(2) + " L",
+            Volume: "",
             Quantité: "",
-            Prix: totalGlobalPrix.toFixed(2)
+            Prix: "",
+            TotalLitres: (totalGlobalCl / 100).toFixed(2),
+            TotalPrix: totalGlobalPrix.toFixed(2)
         });
 
+        // Création Excel
         const worksheet = XLSX.utils.json_to_sheet(rows);
-        const workbook = XLSX.utils.book_new();
 
+        /* ------------------------------
+           🎨 STYLE : Bordures + couleurs
+        ------------------------------ */
+
+        const range = XLSX.utils.decode_range(worksheet["!ref"]);
+
+        // Bordures pour toutes les cellules
+        for (let R = range.s.r; R <= range.e.r; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                const cell = worksheet[cellAddress];
+                if (cell) {
+                    cell.s = cell.s || {};
+                    cell.s.border = {
+                        top: { style: "thin", color: { rgb: "000000" } },
+                        bottom: { style: "thin", color: { rgb: "000000" } },
+                        left: { style: "thin", color: { rgb: "000000" } },
+                        right: { style: "thin", color: { rgb: "000000" } }
+                    };
+                }
+            }
+        }
+
+        // Style ligne 1 (titres)
+        for (let C = 0; C <= 6; C++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: C })];
+            if (cell) {
+                cell.s = {
+                    fill: { fgColor: { rgb: "FFF2CC" } },
+                    font: { bold: true },
+                    border: cell.s.border
+                };
+            }
+        }
+
+        // Style TOTAL COMPAGNON + TOTAL GLOBAL
+        rows.forEach((row, index) => {
+            if (row.Cave === "TOTAL COMPAGNON" || row.Compagnon === "TOTAL GLOBAL GROUPE") {
+                for (let col = 0; col <= 6; col++) {
+                    const cell = worksheet[XLSX.utils.encode_cell({ r: index, c: col })];
+                    if (cell) {
+                        cell.s = {
+                            fill: { fgColor: { rgb: "E2DFD2" } },
+                            font: { bold: true },
+                            border: cell.s.border
+                        };
+                    }
+                }
+            }
+        });
+
+        /* ------------------------------
+           📏 AUTO-FIT DES COLONNES
+        ------------------------------ */
+
+        const colWidths = [];
+
+        for (let C = 0; C <= 6; C++) {
+            let maxLen = 10;
+
+            for (let R = 0; R < rows.length; R++) {
+                const cell = rows[R][Object.keys(rows[0])[C]];
+                if (cell && cell.toString().length > maxLen) {
+                    maxLen = cell.toString().length;
+                }
+            }
+
+            colWidths.push({ wch: maxLen + 2 });
+        }
+
+        worksheet["!cols"] = colWidths;
+
+        const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Groupe");
 
         XLSX.writeFile(workbook, "liste-paniers-groupe.xlsx");
